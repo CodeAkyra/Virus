@@ -1,3 +1,4 @@
+
 ## MALWARE
 
 ### Step 2: Setup your Virtual Environment
@@ -205,255 +206,176 @@ pyinstaller --onefile --windowed --icon=infecto.ico infecto.py
 ```
 ## Ransom.py
 ```bash
-import os, random, time, datetime, tkinter as tk, pygame
+import os
+import json
+import time
+import datetime
+import random
 from threading import Thread
 from PIL import Image, ImageTk
+import tkinter as tk
+from tkinter import messagebox
 
-# ===== CONFIG =====
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-VICTIM_ID, SIM_DURATION = f"GC-{random.randint(10000,99999)}", 60
-ALARM_FILE = os.path.join(BASE_DIR, "Alert2.wav")
-QR_FILE = os.path.join(BASE_DIR, "qr.jpg")
-# ==================
+VICTIM_ID = f"SIM-{random.randint(10000,99999)}"
+SIM_DURATION = 90
+QR_FILE = os.path.join(BASE_DIR, "qrc.jpg")
+EVIDENCE_DIR = os.path.join(BASE_DIR, "sim_evidence")
+os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
-def play_alert():
-    try:
-        if os.path.exists(ALARM_FILE):
-            pygame.mixer.init()
-            pygame.mixer.music.load(ALARM_FILE)
-            pygame.mixer.music.play(-1)
-        else:
-            print(f"[!] Sound missing: {ALARM_FILE}")
-    except Exception as e:
-        print(f"[!] Sound error: {e}")
+def generate_mock_iocs():
+    now = datetime.datetime.now().isoformat()
+    return [
+        {"timestamp": now, "type": "process_creation", "detail": "ransomware.exe (simulated)"},
+        {"timestamp": now, "type": "file_marker", "detail": "Resume.docx.locked"},
+        {"timestamp": now, "type": "file_marker", "detail": "Vacation.jpg.locked"},
+        {"timestamp": now, "type": "network_beacon", "detail": "beacon to 10.10.10.10 (simulated)"}
+    ]
 
-def ransom_gui():
+def save_evidence(iocs):
+    fname = os.path.join(EVIDENCE_DIR, f"evidence_{int(time.time())}.json")
+    report = {
+        "victim_id": VICTIM_ID,
+        "generated_at": datetime.datetime.now().isoformat(),
+        "iocs": iocs,
+        "note": "Simulated evidence for lab only."
+    }
+    with open(fname, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=2)
+    return fname
+
+def run_gui():
     root = tk.Tk()
-    root.title("Wana Decrypt0r Simulator 2.0")
-    root.geometry("720x540")
-    root.resizable(False, False)
-    root.configure(bg="#b30000")   # deep red background
-    root.wm_attributes("-topmost", 1)
+    root.title("Ooops, your files have been encrypted!")
+    root.configure(bg="#232224")
+    root.attributes('-fullscreen', True)
+    root.attributes('-topmost', True)
+    root.overrideredirect(True)
+    def lock_focus():
+        while True:
+            try:
+                root.focus_force()
+                root.lift()
+            except Exception:
+                break
+            time.sleep(0.4)
+    Thread(target=lock_focus, daemon=True).start()
 
-    # ===== HEADER =====
-    header = tk.Frame(root, bg="#b30000", height=70)
-    header.pack(fill="x")
-    tk.Label(header, text="Ooops, your files have been encrypted!",
-             fg="white", bg="#b30000", font=("Segoe UI", 20, "bold")).pack(pady=15)
+    banner = tk.Frame(root, bg="#a60d0d", height=47)
+    banner.pack(fill="x")
+    tk.Label(banner, text="Ooops, your files have been encrypted!", bg="#a60d0d", fg="white", font=("Segoe UI", 16, "bold")).pack(side="left", padx=30)
+    tk.Label(banner, text=f"Victim ID: {VICTIM_ID}", bg="#a60d0d", fg="#ffd0d0", font=("Consolas", 12)).pack(side="right", padx=30)
 
-    # ===== MAIN LAYOUT =====
-    body = tk.Frame(root, bg="#f4f4f4", padx=10, pady=10)
-    body.pack(fill="both", expand=True)
-
-    # LEFT PANEL (Warnings + Countdown)
-    left = tk.Frame(body, bg="#990000", width=220, padx=8, pady=8)
+    card = tk.Frame(root, bg="#1c1919", bd=2, relief="ridge")
+    card.pack(padx=25, pady=25, fill="both", expand=True)
+    left = tk.Frame(card, bg="#7a0909", width=215)
     left.pack(side="left", fill="y")
+    left.pack_propagate(False)
+    lock_canvas = tk.Canvas(left, width=97, height=97, bg="#7a0909", highlightthickness=0)
+    lock_canvas.create_oval(8,8,89,89, fill="#fff", outline="#bdbaba")
+    lock_canvas.create_rectangle(37,44,69,85, fill="#7a0909", outline="#7a0909")
+    lock_canvas.create_arc(24,18,82,60, start=0, extent=180, style="arc", outline="#7a0909", width=7)
+    lock_canvas.pack(pady=17)
 
-    # Payment raise panel
-    tk.Label(left, text="Payment will be raised on:", bg="#990000", fg="white",
-             font=("Segoe UI", 11, "bold")).pack(pady=5)
-    raise_lbl = tk.Label(left, text="--/--/----", bg="black", fg="lime",
-                         font=("Consolas", 14, "bold"), width=18, height=2)
-    raise_lbl.pack(pady=5)
+    # Time and date visual
+    def make_timer_box(parent, title, date_val):
+        frame = tk.Frame(parent, bg="#7a0909")
+        frame.pack(pady=7, padx=10, fill="x")
+        tk.Label(frame, text=title, bg="#7a0909", fg="#ffeeee", font=("Segoe UI", 12, "bold")).pack(anchor="w")
+        date_lbl = tk.Label(frame, text=date_val, bg="white", fg="#2d2929", font=("Consolas",13,"bold"), width=23)
+        date_lbl.pack(pady=(3,0))
+        timer_lbl = tk.Label(frame, text="00:00:00", bg="black", fg="#ff3939", font=("Consolas",14,"bold"), width=23)
+        timer_lbl.pack(pady=(2,6))
+        return date_lbl, timer_lbl
 
-    # Files lost panel
-    tk.Label(left, text="Your files will be lost on:", bg="#990000", fg="white",
-             font=("Segoe UI", 11, "bold")).pack(pady=15)
-    lost_lbl = tk.Label(left, text="--/--/----", bg="black", fg="red",
-                        font=("Consolas", 14, "bold"), width=18, height=2)
-    lost_lbl.pack(pady=5)
+    payment_deadline = (datetime.datetime.now() + datetime.timedelta(minutes=2)).strftime("%Y-%m-%d %H:%M:%S")
+    file_loss_deadline = (datetime.datetime.now() + datetime.timedelta(minutes=3)).strftime("%Y-%m-%d %H:%M:%S")
 
-    # ===== RIGHT PANEL (Info + QR) =====
-    right = tk.Frame(body, bg="#f4f4f4")
-    right.pack(side="left", fill="both", expand=True, padx=10)
+    raise_date_lbl, raise_timer_lbl = make_timer_box(left, "Payment required before:", payment_deadline)
+    lost_date_lbl, lost_timer_lbl = make_timer_box(left, "Files WILL BE LOST after:", file_loss_deadline)
+    tk.Label(left, text="System monitored. DO NOT TURN OFF.", bg="#7a0909", fg="#ffd0d0", font=("Segoe UI", 10), wraplength=180).pack(pady=9)
 
-    # Victim ID
-    tk.Label(right, text=f"Victim ID: {VICTIM_ID}", font=("Consolas", 12), bg="#f4f4f4").pack(anchor="w")
+    right = tk.Frame(card, bg="#19181b")
+    right.pack(side="left", fill="both", expand=True, padx=30, pady=13)
+    content = (
+        "All files on this computer have been encrypted.\n"
+        "Extension '.locked' is added to every affected file.\n\n"
+        "To restore access:\n"
+        "  1. Scan the QR code below using a mobile payment app.\n"
+        "  2. Send the exact amount demanded.\n"
+        "  3. Click 'Check Payment' below. You will receive a decryption key if payment is verified.\n\n"
+        "WARNING:\n"
+        "  - Do NOT modify, rename, or delete encrypted files, otherwise they may be lost forever.\n"
+        "  - Antivirus removal will NOT recover your data.\n"
+        "  - If payment is not received before the deadline, all files will be permanently deleted and cannot be restored."
+    )
+    tk.Label(right, text=content, bg="#19181b", fg="#ededed", font=("Segoe UI", 13), justify="left", anchor="nw", wraplength=480).pack(pady=10)
 
-    # Instructions
-    instr = ("What Happened to My Computer?\n\n"
-             "All your important files are encrypted.\n"
-             "To restore access, you must pay ₱5,000 via GCash.\n\n"
-             "Can I Recover My Files?\n\n"
-             "Sure. You can recover files safely, but only after payment.\n\n"
-             "How Do I Pay?\n\n"
-             "Payment is accepted in GCash. Scan the QR below and send the amount.\n")
-    tk.Message(right, text=instr, width=400, bg="#f4f4f4", font=("Segoe UI", 10)).pack(anchor="w", pady=5)
-
-    # QR Image
+    qr_container = tk.Frame(right, bg="#19181b")
+    qr_container.pack(pady=6)
     if os.path.exists(QR_FILE):
-        qr = ImageTk.PhotoImage(Image.open(QR_FILE).resize((200,200)))
-        tk.Label(right, image=qr, bg="#f4f4f4").pack(pady=10)
-        right.qr_img = qr
+        img = Image.open(QR_FILE)
+        w, h = img.size
+        show_size = min(w, h, 180)
+        img = img.resize((show_size, show_size), Image.LANCZOS)
+        tk_qr = ImageTk.PhotoImage(img)
+        lbl_qr = tk.Label(qr_container, image=tk_qr, bg="#19181b")
+        lbl_qr.image = tk_qr
+        lbl_qr.pack()
     else:
-        tk.Label(right, text="[QR MISSING]", fg="red", bg="#f4f4f4").pack(pady=10)
+        tk.Label(qr_container, text="[PAYMENT QR NOT FOUND]", bg="#19181b", fg="red", font=("Segoe UI", 13)).pack(pady=38)
 
-    # Payment details
-    pay_frame = tk.Frame(right, bg="#ffcc00", padx=10, pady=5)
-    pay_frame.pack(fill="x", pady=10)
-    tk.Label(pay_frame, text="Send ₱5,000 worth to this GCash QR!", bg="#ffcc00",
-             fg="black", font=("Consolas", 11, "bold")).pack()
+    tk.Label(right, text="Scan code above to pay ransom. Payment must be exact and before deadline.",
+             bg="#19181b", fg="#ffd15f", font=("Consolas", 11, "bold")).pack(pady=(2,15))
 
-    # ===== FOOTER (Countdown + Buttons) =====
-    footer = tk.Frame(root, bg="#b30000", height=50)
-    footer.pack(side="bottom", fill="x")
+    btn_frame = tk.Frame(right, bg="#19181b")
+    btn_frame.pack(fill="x", pady=(2,2))
+    def check_payment_action():
+        messagebox.showinfo("Check Payment", "No payment detected! Verify your transaction and try again.")
+    def decrypt_action():
+        messagebox.showinfo("Decrypt", "Payment required. Unable to restore files until payment is confirmed.")
+    def analyze_action():
+        iocs = generate_mock_iocs()
+        fname = save_evidence(iocs)
+        out = f"Simulated IOCs:\n" + "\n".join([f"- {i['type']}: {i['detail']}" for i in iocs])
+        out += f"\n\nSaved: {fname}"
+        messagebox.showinfo("Analyze", out)
+    def save_evidence_action():
+        iocs = generate_mock_iocs()
+        fname = save_evidence(iocs)
+        messagebox.showinfo("Save Evidence", f"Saved evidence:\n{fname}")
+    def acknowledge_action():
+        if messagebox.askyesno("Acknowledge", "Exit ransomware screen?"):
+            root.destroy()
+    tk.Button(btn_frame, text="Check Payment", bg="#dcdcdc", fg="#181818", font=("Segoe UI",12,"bold"), width=16, command=check_payment_action).pack(side="left", padx=8)
+    tk.Button(btn_frame, text="Decrypt", bg="#ffd800", fg="#181818", font=("Segoe UI",12,"bold"), width=16, command=decrypt_action).pack(side="left", padx=8)
+    tk.Button(btn_frame, text="Analyze", bg="#ffcd39", fg="black", font=("Segoe UI",11,"bold"), width=11, command=analyze_action).pack(side="left", padx=2)
+    tk.Button(btn_frame, text="Save", bg="#d4f1d3", fg="black", font=("Segoe UI",11,"bold"), width=11, command=save_evidence_action).pack(side="left", padx=2)
+    tk.Button(btn_frame, text="Acknowledge", bg="#48d3e5", fg="black", font=("Segoe UI",11,"bold"), width=14, command=acknowledge_action).pack(side="right", padx=9)
 
-    countdown_lbl = tk.Label(footer, text="Time Left: -- sec", fg="white", bg="#b30000",
-                             font=("Consolas", 16, "bold"))
-    countdown_lbl.pack(pady=5)
-
-    def update_countdown():
+    status = tk.Frame(card, bg="#1c1919")
+    status.pack(fill="x", pady=(4,7), padx=12)
+    countdown_lbl = tk.Label(status, text="Time left to pay: -- s", bg="#1c1919", fg="#ffd0d0", font=("Consolas",13,"bold"))
+    countdown_lbl.pack(side="left", padx=(1,6))
+    def countdown():
         start = time.time()
         while time.time() - start < SIM_DURATION:
-            left = int(SIM_DURATION - (time.time() - start))
-            countdown_lbl.config(text=f"Time Left: {left} sec")
-            raise_lbl.config(text="08/26/2025 10:00 AM ")
-            lost_lbl.config(text="08/26/2025 10:10 AM")
-            root.update()
+            remain = int(SIM_DURATION - (time.time() - start))
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            countdown_lbl.config(text=f"Time left to pay: {remain} s | Current time: {now}")
+            raise_timer_lbl.config(text=time.strftime("%H:%M:%S", time.gmtime(remain)))
+            lost_timer_lbl.config(text=time.strftime("%H:%M:%S", time.gmtime(max(0, remain-30))))
+            root.update_idletasks()
             time.sleep(1)
-        root.destroy()
-
-    Thread(target=update_countdown, daemon=True).start()
+        countdown_lbl.config(text="DEADLINE PASSED. FILES WILL BE DELETED!")
+    Thread(target=countdown, daemon=True).start()
     root.mainloop()
 
 def main():
-    Thread(target=play_alert, daemon=True).start()
-    ransom_gui()
-
+    run_gui()
 if __name__ == "__main__":
     main()
-```
 
-# EDR
-
-### Install libraries
-```bash
-pip install psutil matplotlib
-```
-
-### edr_lite.py
-```bash
-import psutil, tkinter as tk, datetime, os
-from tkinter import ttk, messagebox
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import matplotlib.pyplot as plt
-
-# ===== CONFIG =====
-REFRESH = 2000
-SUSPICIOUS = ["mimikatz.exe","wannacry.exe","netcat.exe","meterpreter.exe"]
-DESKTOP_DIR = os.path.join(os.path.expanduser("~"), "Desktop")
-# ==================
-
-def save_report(process_list, net_list):
-    if not os.path.exists(DESKTOP_DIR):
-        os.makedirs(DESKTOP_DIR)
-
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"edr_report_{timestamp}.txt"
-    filepath = os.path.join(DESKTOP_DIR, filename)
-
-    with open(filepath, "w") as f:
-        f.write("=== EDR-lite Snapshot Report ===\n")
-        f.write(f"Generated: {datetime.datetime.now()}\n\n")
-        f.write("--- Processes ---\n")
-        for p in process_list: f.write(p+"\n")
-        f.write("\n--- Network Connections ---\n")
-        for n in net_list: f.write(n+"\n")
-
-    messagebox.showinfo("Export Complete", f"IOC snapshot saved:\n{filepath}")
-    print(f"[+] Report saved: {filepath}")
-
-def get_processes():
-    procs=[]
-    for p in psutil.process_iter(['pid','name','cpu_percent','memory_percent']):
-        try:
-            if p.info['name'].lower()!="system idle process": procs.append(p.info)
-        except: pass
-    return procs
-
-def get_connections():
-    conns=[]
-    for c in psutil.net_connections(kind='inet'):
-        if c.raddr:
-            conns.append({"l":f"{c.laddr.ip}:{c.laddr.port}" if c.laddr else "?",
-                          "r":f"{c.raddr.ip}:{c.raddr.port}","s":c.status})
-    return conns
-
-def update_process_tab():
-    proc_box.delete(1.0,tk.END); plist=[]
-    for p in get_processes():
-        line=f"{p['pid']:5} | {p['name'][:25]:25} | CPU:{p['cpu_percent']:5.1f}% | MEM:{p['memory_percent']:5.1f}%"
-        color="black"
-        if p['name'].lower() in SUSPICIOUS: color="red"; line+="  <== SUSPICIOUS"
-        proc_box.insert(tk.END,line+"\n",color); proc_box.tag_config(color,foreground=color)
-        plist.append(line)
-    return plist
-
-def update_network_tab():
-    net_box.delete(1.0,tk.END); nlist=[]
-    for c in get_connections():
-        line=f"{c['l']:25} -> {c['r']:25} | {c['s']}"
-        if c['r'].startswith(("192.168.","127.")): color="green"
-        elif "WAIT" in c['s']: color="orange"
-        else: color="red"
-        net_box.insert(tk.END,line+"\n",color); net_box.tag_config(color,foreground=color)
-        nlist.append(line)
-    return nlist
-
-def update_charts():
-    ax1.clear()
-    cpu,mem=psutil.cpu_percent(),psutil.virtual_memory().percent
-    bars=ax1.bar(["CPU","Memory"],[cpu,mem],color=["blue","purple"])
-    ax1.set_ylim(0,100); ax1.set_title("System Resource Summary")
-    ax1.bar_label(bars,fmt="%.1f%%"); ax1.grid(True,linestyle="--",alpha=0.5)
-    canvas1.draw()
-
-    ax2.clear()
-    procs=sorted(get_processes(),key=lambda p:p['memory_percent'],reverse=True)[:5]
-    names=[p['name'][:12] for p in procs]; mem=[p['memory_percent'] for p in procs]
-    bars=ax2.barh(names,mem,color="teal")
-    ax2.set_title("Top 5 Processes by Memory Usage"); ax2.set_xlabel("Memory %")
-    ax2.bar_label(bars,fmt="%.1f%%"); ax2.grid(True,linestyle="--",alpha=0.5)
-    canvas2.draw()
-
-def update_all():
-    global last_processes, last_network
-    last_processes = update_process_tab()
-    last_network = update_network_tab()
-    update_charts()
-    root.after(REFRESH,update_all)
-
-# ==== GUI ====
-root=tk.Tk(); root.title("🛡️ Blue Team EDR-lite Pro Dashboard"); root.geometry("1200x800")
-
-notebook=ttk.Notebook(root); notebook.pack(fill="both",expand=True)
-
-# --- Tab 1: Processes ---
-tab1=tk.Frame(notebook,bg="white"); notebook.add(tab1,text="Processes")
-proc_box=tk.Text(tab1,height=30,width=120,bg="#f5f5f5",fg="black",font=("Consolas",10))
-proc_box.pack(fill="both",expand=True,padx=10,pady=10)
-
-# --- Tab 2: Network ---
-tab2=tk.Frame(notebook,bg="white"); notebook.add(tab2,text="Network")
-net_box=tk.Text(tab2,height=30,width=120,bg="#f5f5f5",fg="black",font=("Consolas",10))
-net_box.pack(fill="both",expand=True,padx=10,pady=10)
-
-# --- Tab 3: Charts ---
-tab3=tk.Frame(notebook,bg="white"); notebook.add(tab3,text="Charts")
-fig1,ax1=plt.subplots(figsize=(5,3),dpi=100); canvas1=FigureCanvasTkAgg(fig1,master=tab3)
-canvas1.get_tk_widget().pack(fill="x",padx=10,pady=10)
-fig2,ax2=plt.subplots(figsize=(5,3),dpi=100); canvas2=FigureCanvasTkAgg(fig2,master=tab3)
-canvas2.get_tk_widget().pack(fill="x",padx=10,pady=10)
-
-# --- Tab 4: Reports ---
-tab4=tk.Frame(notebook,bg="white"); notebook.add(tab4,text="Reports")
-tk.Label(tab4,text="Export IOC Snapshot",font=("Segoe UI",14,"bold"),bg="white").pack(pady=20)
-tk.Button(tab4,text="📤 Export IOC Now",
-          command=lambda: save_report(last_processes,last_network),
-          bg="black",fg="white",font=("Segoe UI",12,"bold")).pack()
-
-last_processes,last_network=[],[]
-update_all(); root.mainloop()
 ```
 
 
