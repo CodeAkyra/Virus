@@ -344,14 +344,11 @@ def run_gui():
         iocs = generate_mock_iocs()
         fname = save_evidence(iocs)
         messagebox.showinfo("Save Evidence", f"Saved evidence:\n{fname}")
-    def acknowledge_action():
-        if messagebox.askyesno("Acknowledge", "Exit ransomware screen?"):
-            root.destroy()
+        
     tk.Button(btn_frame, text="Check Payment", bg="#dcdcdc", fg="#181818", font=("Segoe UI",12,"bold"), width=16, command=check_payment_action).pack(side="left", padx=8)
     tk.Button(btn_frame, text="Decrypt", bg="#ffd800", fg="#181818", font=("Segoe UI",12,"bold"), width=16, command=decrypt_action).pack(side="left", padx=8)
     tk.Button(btn_frame, text="Analyze", bg="#ffcd39", fg="black", font=("Segoe UI",11,"bold"), width=11, command=analyze_action).pack(side="left", padx=2)
     tk.Button(btn_frame, text="Save", bg="#d4f1d3", fg="black", font=("Segoe UI",11,"bold"), width=11, command=save_evidence_action).pack(side="left", padx=2)
-    tk.Button(btn_frame, text="Acknowledge", bg="#48d3e5", fg="black", font=("Segoe UI",11,"bold"), width=14, command=acknowledge_action).pack(side="right", padx=9)
 
     status = tk.Frame(card, bg="#1c1919")
     status.pack(fill="x", pady=(4,7), padx=12)
